@@ -66,3 +66,5 @@ endif()
 
 add_executable(LaTeX ${SRC})
 target_link_libraries(LaTeX ${LINK_LIBS})
+
+add_library(clatexmath STATIC ${SRC})
