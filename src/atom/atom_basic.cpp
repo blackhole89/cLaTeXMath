@@ -23,7 +23,12 @@ sptr<Box> MathAtom::createBox(_out_ TeXEnvironment& env) {
   TeXEnvironment& e = *(env.copy(env.getTeXFont()->copy()));
   e.getTeXFont()->setRoman(false);
   int style = e.getStyle();
-  e.setStyle(_style);
+  // if parent style greater than "this style",
+  // that means the parent uses smaller font size,
+  // then uses parent style instead
+  if (_style > style) {
+    e.setStyle(_style);
+  }
   auto box = _base->createBox(e);
   e.setStyle(style);
   return box;
@@ -58,7 +63,7 @@ CumulativeScriptsAtom::CumulativeScriptsAtom(
     ca->_sub->add(sub);
     _sup = ca->_sup;
     _sub = ca->_sub;
-  } else if (sa = dynamic_cast<ScriptsAtom*>(base.get())) {
+  } else if ((sa = dynamic_cast<ScriptsAtom*>(base.get()))) {
     _base = sa->_base;
     _sup = sptr<RowAtom>(new RowAtom(sa->_sup));
     _sub = sptr<RowAtom>(new RowAtom(sa->_sub));
@@ -1010,7 +1015,7 @@ sptr<Box> ScriptsAtom::createBox(_out_ TeXEnvironment& env) {
     shiftUp = shiftDown = 0;
     sptr<CharFont> pcf = cs->getCharFont(*tf);
     CharFont& cf = *pcf;
-    if (!cs->isMarkedAsTextSymbol() || !tf->hasSpace(cf._fontId)) {
+    if (!cs->isMarkedAsTextSymbol() || !tf->hasSpace(cf.fontId)) {
       delta = tf->getChar(cf, style).getItalic();
     }
     if (delta > PREC && _sub == nullptr) {

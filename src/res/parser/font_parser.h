@@ -9,11 +9,43 @@ using namespace tinyxml2;
 
 namespace tex {
 
-typedef void (*ChildParser)(const XMLElement*, wchar_t, FontInfo&);
-
 struct __Versions {
   string bold, roman, ss, tt, it;
 };
+
+struct __Metrics {
+  wchar_t ch;
+  float   width, height, depth, italic;
+};
+
+struct __Extension {
+  wchar_t ch;
+  int     rep, top, mid, bot;
+};
+
+struct __Kern {
+  wchar_t left, right;
+  float   kern;
+};
+
+struct __Lig {
+  wchar_t left, right, lig;
+};
+
+struct __Larger {
+  wchar_t code, larger;
+  int     fontId;
+};
+
+struct __BasicInfo {
+  vector<__Metrics>   metrics;
+  vector<__Extension> extensions;
+  vector<__Larger>    largers;
+  vector<__Kern>      kerns;
+  vector<__Lig>       ligs;
+};
+
+typedef void (*ChildParser)(const XMLElement*, wchar_t, __BasicInfo&);
 
 /**
  * Parses the font information from an XML-file
@@ -37,19 +69,19 @@ private:
   // the xml-document we used
   XMLDocument _doc;
 
-  map<int, __Versions> _variousVersion;
+  map<int, __Versions>           _variousVersion;
   map<string, vector<CharFont*>> _parsedTextStyles;
-  const XMLElement* _root;
-  string _base;
+  const XMLElement*              _root;
+  string                         _base;
 
-  static void parse_extension(const XMLElement*, wchar_t, _out_ FontInfo&) throw(ex_xml_parse);
-  static void parse_kern(const XMLElement*, wchar_t, _out_ FontInfo&) throw(ex_xml_parse);
-  static void parse_lig(const XMLElement*, wchar_t, _out_ FontInfo&) throw(ex_xml_parse);
-  static void parse_larger(const XMLElement*, wchar_t, _out_ FontInfo&) throw(ex_xml_parse);
+  static void parse_extension(const XMLElement*, wchar_t, __BasicInfo&);
+  static void parse_kern(const XMLElement*, wchar_t, __BasicInfo&);
+  static void parse_lig(const XMLElement*, wchar_t, __BasicInfo&);
+  static void parse_larger(const XMLElement*, wchar_t, __BasicInfo&);
 
   void parseStyleMappings(_out_ map<string, vector<CharFont*>>& styles) throw(ex_res_parse);
 
-  static void processCharElement(const XMLElement* e, _out_ FontInfo& info) throw(ex_res_parse);
+  static void processCharElement(const XMLElement* e, __BasicInfo& info);
 
   inline static bool exists(const char* attr, const XMLElement* e) throw() {
     const XMLAttribute* value = e->FindAttribute(attr);
@@ -75,8 +107,8 @@ private:
   inline static float getFloatAndCheck(
       const char* attr, const XMLElement* e) throw(ex_xml_parse) {
     // get value
-    float v = 0;
-    int err = e->QueryFloatAttribute(attr, &v);
+    float v   = 0;
+    int   err = e->QueryFloatAttribute(attr, &v);
     // no attribute mapped by attr
     if (err != XML_NO_ERROR)
       throw ex_xml_parse(RESOURCE_NAME, e->Name(), attr, "has invalid real value");
@@ -86,7 +118,7 @@ private:
   inline static int getIntAndCheck(
       const char* attr, const XMLElement* e) throw(ex_xml_parse) {
     // get value
-    int v = 0;
+    int v   = 0;
     int err = e->QueryIntAttribute(attr, &v);
     if (err != XML_NO_ERROR)
       throw ex_xml_parse(RESOURCE_NAME, e->Name(), attr, "has invalid integer value");
@@ -98,7 +130,7 @@ private:
     // check exists
     if (!exists(attr, e)) return def;
     // get value
-    int v = 0;
+    int v   = 0;
     int err = e->QueryAttribute(attr, &v);
     if (err != XML_NO_ERROR)
       throw ex_xml_parse(RESOURCE_NAME, e->Name(), attr, "has invalid integer value");
@@ -110,8 +142,8 @@ private:
     // check exists
     if (!exists(attr, e)) return def;
     // get value
-    float v = 0;
-    int err = e->QueryFloatAttribute(attr, &v);
+    float v   = 0;
+    int   err = e->QueryFloatAttribute(attr, &v);
     if (err != XML_NO_ERROR)
       throw ex_xml_parse(RESOURCE_NAME, e->Name(), attr, "has invalid real value");
     return v;
@@ -125,6 +157,10 @@ private:
     __dbg("root name:%s\n", _root->Name());
 #endif  // HAVE_LOG
   }
+
+  void sortBasicInfo(__BasicInfo& bi);
+
+  void setupFontInfo(__BasicInfo& bi, FontInfo& fi);
 
 public:
   DefaultTeXFontParser() throw(ex_res_parse) : _doc(true, COLLAPSE_WHITESPACE) {
